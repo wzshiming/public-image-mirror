@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 SITE="https://github.com/DaoCloud/public-image-mirror"
-URL_PREFIX="https://raw.githubusercontent.com/DaoCloud/public-image-mirror/main"
 DOMAIN_SUFFIX="m.daocloud.io"
 TMPDIR="${TMPDIR:-/tmp}/public-image-mirror"
 
@@ -72,44 +71,18 @@ function first_column() {
     cat | grep -v '^#' | awk '{print $1}'
 }
 
-DOMAIN_LIST="$(fetch "domain.txt" "${URL_PREFIX}/domain.txt" | first_column)"
-MIRROR_LIST="$(fetch "mirror.txt" "${URL_PREFIX}/mirror.txt" | first_column)"
-EXCLUDE_LIST="$(fetch "exclude.txt" "${URL_PREFIX}/exclude.txt" | first_column)"
-
-# check the tag are excluded
-function is_exclude() {
-    local tag="${1}"
-    for exclude in ${EXCLUDE_LIST}; do
-        if [[ "${tag}" =~ ${exclude} ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
 # check the image is mirrored
 function is_mirror() {
     local name="${1}"
-    for mirror in ${MIRROR_LIST}; do
-        if [[ "${name}" == "${mirror}" ]]; then
-            return 0
-        fi
-    done
+     if [[ "${name}" == *"${DOMAIN_SUFFIX}/"* ]]; then
+        return 0
+    fi
     return 1
 }
 
 # replace the prefix of the image
 function replace_image() {
-    local name="${1}"
-    for domain in ${DOMAIN_LIST}; do
-        old_prefix="${domain%%=*}"
-        new_prefix="${domain#*=}"
-        if [[ "${name}" =~ ^"${old_prefix}" ]]; then
-            echo "${name}" | sed "s#${old_prefix}#${new_prefix}#"
-            return
-        fi
-    done
-    echo "${name}"
+    echo "${DOMAIN_SUFFIX}/${name}"
 }
 
 # completion the docker.io prefix
@@ -162,12 +135,6 @@ function replace_line() {
     # check the tag is empty
     if [[ "${image_tag}" == "" ]]; then
         log "Image '${image}' must have a tag"
-        return 1
-    fi
-
-    # check the tag is excluded
-    if is_exclude "${image_tag}"; then
-        log "Image '${image}' tag excludes out of synchronize"
         return 1
     fi
 
